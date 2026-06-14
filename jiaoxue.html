@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>节奏大师 - 数字人教学</title>
+    <style>
+        :root {
+            --bg: #2b2b2b;
+            --panel: #3a3a3a;
+            --text: #f0e6d3;
+            --accent: #ffaa00;
+            --accent2: #ff5500;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* --- 顶部 --- */
+        .header {
+            color: #fff;
+            font-size: 22px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+        .header span {
+            color: var(--accent);
+        }
+
+        /* --- 加载状态 --- */
+        .loading-area {
+            width: 100%;
+            background: var(--panel);
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            color: #aaa;
+        }
+        .loading-area .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #555;
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        .song-name {
+            color: var(--accent);
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        /* --- 信息栏 --- */
+        .info-bar {
+            width: 100%;
+            background: var(--panel);
+            border-radius: 16px;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            color: var(--text);
+            font-size: 14px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .bpm-display {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .bpm-label {
+            font-size: 11px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        .beat-indicator {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #555;
+            transition: all 0.08s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: white;
+        }
+        .beat-indicator.strong {
+            background: var(--accent2);
+            transform: scale(1.2);
+            box-shadow: 0 0 20px var(--accent2);
+        }
+        .beat-indicator.weak {
+            background: var(--accent);
+            transform: scale(1.05);
+        }
+
+        /* --- 数字人舞台 --- */
+        .stage {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            background: radial-gradient(ellipse at center, #4a4a4a 0%, #2a2a2a 70%);
+            border-radius: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        }
+        .floor {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 25%;
+            background: linear-gradient(to bottom, rgba(139, 90, 43, 0.3), rgba(139, 90, 43, 0.6));
+            border-top: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- 动作提示 --- */
+        .action-hint {
+            width: 100%;
+            background: var(--panel);
+            border-radius: 16px;
+            padding: 12px 20px;
+            text-align: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            transition: all 0.15s;
+        }
+        .action-hint.clap {
+            background: #d4442a;
+            box-shadow: 0 0 25px rgba(212, 68, 42, 0.5);
+        }
+        .action-hint.desk {
+            background: #8b5a2b;
+            box-shadow: 0 0 25px rgba(139, 90, 43, 0.4);
+        }
+        .action-hint.shoulder {
+            background: #4a90d9;
+            box-shadow: 0 0 25px rgba(74, 144, 217, 0.4);
+        }
+
+        /* --- 按钮 --- */
+        .btn {
+            background: var(--accent);
+            color: #1a1a1a;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        .btn:hover {
+            background: #ffbb22;
+            transform: translateY(-2px);
+        }
+        .btn:active {
+            transform: scale(0.96);
+        }
+        .btn:disabled {
+            background: #555;
+            color: #999;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 10px;
+                gap: 10px;
+            }
+            .action-hint {
+                font-size: 16px;
+                padding: 10px;
+            }
+            .bpm-display {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">🎵 节奏大师 · <span>数字人教学</span></div>
+
+        <!-- 加载状态 -->
+        <div class="loading-area" id="loadingArea">
+            <div class="spinner"></div>
+            <div>正在加载音乐...</div>
+            <div class="song-name" id="songNameDisplay"></div>
+        </div>
+
+        <!-- 信息栏 -->
+        <div class="info-bar">
+            <div style="text-align:center;">
+                <div class="bpm-label">BPM</div>
+                <div class="bpm-display" id="bpmDisplay">--</div>
+            </div>
+            <div style="text-align:center;">
+                <div class="bpm-label">当前拍</div>
+                <div class="beat-indicator" id="beatIndicator">-</div>
+            </div>
+            <div style="text-align:center;">
+                <div class="bpm-label">小节</div>
+                <div style="font-size:20px;font-weight:bold;color:#fff;" id="barDisplay">0</div>
+            </div>
+        </div>
+
+        <!-- 数字人舞台 -->
+        <div class="stage" id="stage">
+            <div class="floor"></div>
+            <canvas id="avatarCanvas"></canvas>
+        </div>
+
+        <!-- 动作提示 -->
+        <div class="action-hint" id="actionHint">加载中...</div>
+
+        <!-- 播放按钮 -->
+        <button class="btn" id="playBtn" disabled>🔍 正在分析 BPM...</button>
+        <div style="color:#777;font-size:11px;text-align:center;">
+            强拍=拍手 | 弱拍=拍桌(1-4小节) 或 拍肩(5-8小节)
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置：音乐直链 ====================
+        const AUDIO_URL = 'https://raw.githubusercontent.com/wangyanyue1983/song/main/fanchang.mp3';
+        const SONG_NAME = '翻唱';
+
+        // ==================== DOM 元素 ====================
+        const loadingArea = document.getElementById('loadingArea');
+        const songNameDisplay = document.getElementById('songNameDisplay');
+        const bpmDisplay = document.getElementById('bpmDisplay');
+        const beatIndicator = document.getElementById('beatIndicator');
+        const barDisplay = document.getElementById('barDisplay');
+        const actionHint = document.getElementById('actionHint');
+        const playBtn = document.getElementById('playBtn');
+        const canvas = document.getElementById('avatarCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let audioContext = null;
+        let audioBuffer = null;
+        let sourceNode = null;
+        let detectedBPM = null;
+        let isPlaying = false;
+        let startTime = 0;
+        let animationId = null;
+        let currentAction = 'idle';
+        let scheduleTimer = null;
+
+        // ==================== 加载音频 ====================
+        async function loadAudio() {
+            try {
+                songNameDisplay.textContent = '《' + SONG_NAME + '》';
+                const response = await fetch(AUDIO_URL);
+                if (!response.ok) throw new Error('加载失败');
+                const arrayBuffer = await response.arrayBuffer();
+                audioContext = new(window.AudioContext || window.webkitAudioContext)();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+                // 分析 BPM
+                detectedBPM = analyzeBPM(audioBuffer);
+                bpmDisplay.textContent = Math.round(detectedBPM);
+                playBtn.disabled = false;
+                playBtn.textContent = '▶ 开始播放 & 数字人教学';
+                actionHint.textContent = '已就绪，点击播放';
+                actionHint.className = 'action-hint';
+                loadingArea.style.display = 'none';
+                resetAvatar();
+                drawIdle();
+            } catch (err) {
+                console.error(err);
+                loadingArea.innerHTML =
+                    '<div style="color:#ff5555;">❌ 加载失败，请检查链接是否有效</div><div style="color:#999;font-size:12px;margin-top:5px;">' +
+                    AUDIO_URL + '</div>';
+                playBtn.disabled = true;
+                playBtn.textContent = '⚠ 加载失败';
+            }
+        }
+
+        // ==================== BPM 分析 ====================
+        function analyzeBPM(buffer) {
+            const sampleRate = buffer.sampleRate;
+            const data = buffer.getChannelData(0);
+            const totalSamples = data.length;
+
+            const downSampleRatio = Math.floor(sampleRate / 86);
+            const downSampled = [];
+            for (let i = 0; i < totalSamples; i += downSampleRatio) {
+                downSampled.push(Math.abs(data[i]));
+            }
+
+            const peaks = [];
+            const windowSize = Math.floor(downSampled.length / 200);
+            for (let i = windowSize; i < downSampled.length - windowSize; i++) {
+                let isPeak = true;
+                const val = downSampled[i];
+                if (val < 0.05) continue;
+                for (let j = i - windowSize; j <= i + windowSize; j++) {
+                    if (downSampled[j] > val) { isPeak = false; break; }
+                }
+                if (isPeak) peaks.push(i);
+            }
+
+            if (peaks.length < 8) return 120;
+
+            const intervals = [];
+            for (let i = 1; i < peaks.length; i++) {
+                intervals.push(peaks[i] - peaks[i - 1]);
+            }
+
+            const maxInterval = Math.min(...intervals) * 4;
+            const minInterval = Math.max(...intervals) / 4;
+            const candidates = {};
+            for (const interval of intervals) {
+                if (interval < minInterval || interval > maxInterval) continue;
+                const bpm = Math.round((sampleRate / downSampleRatio) * 60 / interval);
+                const clamped = Math.max(60, Math.min(200, bpm));
+                candidates[clamped] = (candidates[clamped] || 0) + 1;
+            }
+
+            let bestBPM = 120;
+            let bestCount = 0;
+            for (const [bpm, count] of Object.entries(candidates)) {
+                if (count > bestCount) { bestCount = count;
+                    bestBPM = parseInt(bpm); }
+            }
+            return bestBPM;
+        }
+
+        // ==================== 播放控制 ====================
+        playBtn.addEventListener('click', () => {
+            if (isPlaying) return;
+            if (!audioBuffer || !detectedBPM) return;
+
+            if (audioContext.state === 'suspended') audioContext.resume();
+
+            sourceNode = audioContext.createBufferSource();
+            sourceNode.buffer = audioBuffer;
+            sourceNode.connect(audioContext.destination);
+            sourceNode.start(0);
+            startTime = audioContext.currentTime;
+            isPlaying = true;
+            playBtn.disabled = true;
+            playBtn.textContent = '▶ 播放中...';
+
+            sourceNode.onended = () => stopPlayback();
+
+            scheduleBeats();
+            animate();
+        });
+
+        function stopPlayback() {
+            isPlaying = false;
+            playBtn.disabled = false;
+            playBtn.textContent = '▶ 重新播放';
+            if (scheduleTimer) clearTimeout(scheduleTimer);
+            if (animationId) cancelAnimationFrame(animationId);
+            currentAction = 'idle';
+            actionHint.textContent = '播放结束';
+            actionHint.className = 'action-hint';
+            beatIndicator.textContent = '-';
+            beatIndicator.className = 'beat-indicator';
+            barDisplay.textContent = '0';
+            drawIdle();
+        }
+
+        function getElapsedBeats() {
+            if (!isPlaying) return 0;
+            return (audioContext.currentTime - startTime) * (detectedBPM / 60);
+        }
+
+        function getBeatInfo() {
+            const beats = getElapsedBeats();
+            const beatInBar = (beats % 4);
+            const barNumber = Math.floor(beats / 4) + 1;
+            return {
+                beatInBar: Math.floor(beatInBar),
+                beatFraction: beatInBar % 1,
+                barNumber: barNumber,
+                isStrong: Math.floor(beatInBar) === 0 || Math.floor(beatInBar) === 2,
+                isWeak: Math.floor(beatInBar) === 1 || Math.floor(beatInBar) === 3,
+                beatNumber: Math.floor(beatInBar) + 1
+            };
+        }
+
+        function scheduleBeats() {
+            if (!isPlaying) return;
+            const beatDuration = 60 / detectedBPM;
+            const elapsed = audioContext.currentTime - startTime;
+            const totalBeats = elapsed * (detectedBPM / 60);
+            const nextBeatNumber = Math.ceil(totalBeats);
+            const nextBeatTime = startTime + (nextBeatNumber / (detectedBPM / 60));
+            const delay = (nextBeatTime - audioContext.currentTime) * 1000;
+
+            if (delay > 0 && delay < beatDuration * 1000 * 1.5) {
+                scheduleTimer = setTimeout(() => {
+                    triggerBeatAction();
+                    scheduleBeats();
+                }, Math.max(delay, 10));
+            } else if (delay <= 0) {
+                triggerBeatAction();
+                scheduleBeats();
+            } else {
+                scheduleTimer = setTimeout(() => scheduleBeats(), 50);
+            }
+        }
+
+        function triggerBeatAction() {
+            const info = getBeatInfo();
+            const barInCycle = (info.barNumber - 1) % 8;
+
+            let action;
+            if (info.isStrong) {
+                action = 'clap';
+            } else if (info.isWeak) {
+                action = barInCycle < 4 ? 'desk' : 'shoulder';
+            } else {
+                action = 'idle';
+            }
+
+            currentAction = action;
+            beatIndicator.textContent = info.beatNumber;
+            beatIndicator.className = info.isStrong ? 'beat-indicator strong' : info.isWeak ? 'beat-indicator weak' :
+                'beat-indicator';
+            barDisplay.textContent = info.barNumber;
+
+            switch (action) {
+                case 'clap':
+                    actionHint.textContent = '👏 拍手！';
+                    actionHint.className = 'action-hint clap';
+                    break;
+                case 'desk':
+                    actionHint.textContent = '🪵 拍桌！';
+                    actionHint.className = 'action-hint desk';
+                    break;
+                case 'shoulder':
+                    actionHint.textContent = '💪 拍肩！';
+                    actionHint.className = 'action-hint shoulder';
+                    break;
+                default:
+                    actionHint.textContent = '—';
+                    actionHint.className = 'action-hint';
+            }
+
+            setTimeout(() => {
+                if (currentAction === action) currentAction = 'idle';
+            }, 100);
+        }
+
+        // ==================== 数字人绘制 ====================
+        function resizeCanvas() {
+            const stage = document.getElementById('stage');
+            const rect = stage.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            canvas.style.width = rect.width + 'px';
+            canvas.style.height = rect.height + 'px';
+        }
+        window.addEventListener('resize', resizeCanvas);
+        setTimeout(resizeCanvas, 200);
+
+        let armAngleL = 0;
+        let armAngleR = 0;
+        let targetArmAngleL = 0;
+        let targetArmAngleR = 0;
+
+        function resetAvatar() {
+            armAngleL = 0;
+            armAngleR = 0;
+            targetArmAngleL = 0;
+            targetArmAngleR = 0;
+        }
+
+        function drawIdle() {
+            resizeCanvas();
+            drawAvatar('idle');
+        }
+
+        function drawAvatar(action) {
+            const w = canvas.width;
+            const h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            const cx = w / 2;
+            const cy = h * 0.42;
+            const scale = Math.min(w, h) / 700;
+
+            if (action === 'clap') {
+                targetArmAngleL = -1.2;
+                targetArmAngleR = 1.2;
+            } else if (action === 'desk') {
+                targetArmAngleL = 0.8;
+                targetArmAngleR = -0.8;
+            } else if (action === 'shoulder') {
+                targetArmAngleL = -2.5;
+                targetArmAngleR = 2.5;
+            } else {
+                targetArmAngleL = 0;
+                targetArmAngleR = 0;
+            }
+
+            const speed = 0.35;
+            armAngleL += (targetArmAngleL - armAngleL) * speed;
+            armAngleR += (targetArmAngleR - armAngleR) * speed;
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // 躯干
+            ctx.fillStyle = '#4a90d9';
+            ctx.beginPath();
+            ctx.roundRect(-40 * scale, -20 * scale, 80 * scale, 100 * scale, 15 * scale);
+            ctx.fill();
+
+            // 左臂
+            ctx.save();
+            ctx.translate(-40 * scale, -5 * scale);
+            ctx.rotate(armAngleL);
+            ctx.fillStyle = '#f5c6a0';
+            ctx.beginPath();
+            ctx.roundRect(-8 * scale, 0, 16 * scale, 70 * scale, 8 * scale);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0, 75 * scale, 12 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 右臂
+            ctx.save();
+            ctx.translate(40 * scale, -5 * scale);
+            ctx.rotate(armAngleR);
+            ctx.fillStyle = '#f5c6a0';
+            ctx.beginPath();
+            ctx.roundRect(-8 * scale, 0, 16 * scale, 70 * scale, 8 * scale);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0, 75 * scale, 12 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // 头部
+            ctx.fillStyle = '#f5c6a0';
+            ctx.beginPath();
+            ctx.arc(0, -55 * scale, 35 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 头发
+            ctx.fillStyle = '#333';
+            ctx.beginPath();
+            ctx.arc(0, -62 * scale, 37 * scale, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // 眼睛
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(-12 * scale, -60 * scale, 8 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(12 * scale, -60 * scale, 8 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#111';
+            ctx.beginPath();
+            ctx.arc(-12 * scale, -58 * scale, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(12 * scale, -58 * scale, 4 * scale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 微笑
+            ctx.strokeStyle = '#c47a5a';
+            ctx.lineWidth = 2 * scale;
+            ctx.beginPath();
+            ctx.arc(0, -45 * scale, 12 * scale, 0.2, Math.PI - 0.2);
+            ctx.stroke();
+
+            // 腿
+            ctx.fillStyle = '#3a3a3a';
+            ctx.fillRect(-18 * scale, 80 * scale, 14 * scale, 60 * scale);
+            ctx.fillRect(4 * scale, 80 * scale, 14 * scale, 60 * scale);
+
+            ctx.restore();
+        }
+
+        function animate() {
+            if (!isPlaying && currentAction === 'idle') {
+                drawAvatar('idle');
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+            if (!isPlaying) {
+                drawAvatar('idle');
+                animationId = requestAnimationFrame(animate);
+                return;
+            }
+            drawAvatar(currentAction);
+            animationId = requestAnimationFrame(animate);
+        }
+
+        // ==================== 启动 ====================
+        loadAudio();
+        setTimeout(() => {
+            resizeCanvas();
+            drawIdle();
+            animate();
+        }, 300);
+
+        window.addEventListener('beforeunload', () => {
+            if (sourceNode) sourceNode.stop();
+            if (audioContext) audioContext.close();
+        });
+    </script>
+</body>
+</html>
